@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -22,9 +23,7 @@ class Program
         }
         else if (choice == "2")
         {
-            Console.Write("Enter server IP address: ");
-            string ipAddress = Console.ReadLine();
-            ConnectToServer(ipAddress);
+            ConnectToServer();
         }
         else
         {
@@ -32,6 +31,24 @@ class Program
         }
     }
 
+    static void ShowIp()
+    {
+        NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+
+        foreach (NetworkInterface networkInterface in networkInterfaces)
+        {
+            // Получение всех IP-адресов для каждого сетевого интерфейса
+            IPInterfaceProperties properties = networkInterface.GetIPProperties();
+            foreach (UnicastIPAddressInformation unicastAddress in properties.UnicastAddresses)
+            {
+                // Печать только IPv4-адресов (пропускаем IPv6-адреса)
+                if (unicastAddress.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                {
+                    Console.WriteLine($"IP Address: {unicastAddress.Address}");
+                }
+            }
+        }
+    }
     static void StartServer()
     {
         Console.WriteLine("Starting server...");
@@ -45,7 +62,7 @@ class Program
             server.Start();
 
             Console.WriteLine("Server started. Waiting for connections...");
-
+            ShowIp();
             TcpClient client = server.AcceptTcpClient();
             Console.WriteLine("Client connected.");
 
@@ -65,26 +82,31 @@ class Program
         }
     }
 
-    static void ConnectToServer(string ipAddress)
+    static void ConnectToServer()
     {
-        try
+        while (true)
         {
-            int port = 8888;
-            TcpClient client = new TcpClient(ipAddress, port);
-            Console.WriteLine("Connected to server.");
-
-            Thread receiveThread = new Thread(() => ReceiveMessages(client));
-            receiveThread.Start();
-
-            while (true)
+            Console.Write("Enter server IP address: ");
+            string ipAddress = Console.ReadLine();
+            try
             {
-                string message = Console.ReadLine();
-                SendMessage(client, message);
+                int port = 8888;
+                TcpClient client = new TcpClient(ipAddress, port);
+                Console.WriteLine("Connected to server.");
+
+                Thread receiveThread = new Thread(() => ReceiveMessages(client));
+                receiveThread.Start();
+
+                while (true)
+                {
+                    string message = Console.ReadLine();
+                    SendMessage(client, message);
+                }
             }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"Exception: {e}");
+            catch (Exception e)
+            {
+                Console.WriteLine($"Exception: {e}");
+            }
         }
     }
 
